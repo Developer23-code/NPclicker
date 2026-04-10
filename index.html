@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Napa Clicker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game">
+        <div id="left-pane">
+            <div id="stats">
+                <h3>📊 Stats</h3>
+                <p>Napas: <span id="napas">0</span></p>
+                <p>Per second: <span id="perSecond">0</span></p>
+                <p>Total Napas: <span id="totalNapas">0</span></p>
+                <p>Prestige: <span id="prestigeLevel">0</span></p>
+            </div>
+            <div id="achievements">
+                <h3>🏆 Achievements</h3>
+                <div id="achievement-list">
+                    <!-- Achievements will be added here -->
+                </div>
+            </div>
+        </div>
+        
+        <div id="center">
+            <header>
+                <h1>Napa Clicker</h1>
+            </header>
+            <div id="main">
+                <img id="clickButton" src="https://asset-cdn.schoology.com/system/files/imagecache/profile_reg/pictures/picture-5c9a2e74f2cde5fa22a4021918054936_693993d057dfc.jpg?1765381072" alt="Napa">
+                <div id="golden-napa" class="hidden">
+                    <img src="https://i.imgur.com/4Z4Z4Z4.png" alt="Golden Napa" id="golden-image">
+                </div>
+            </div>
+            <div id="news-ticker">
+                <p id="news-text">Welcome to Napa Clicker! Click Napa to earn Napas!</p>
+            </div>
+        </div>
+        
+        <div id="right-pane">
+            <div id="store">
+                <h3>🏪 Store</h3>
+                <div class="upgrade" id="cursor">
+                    <div class="upgrade-icon">👆</div>
+                    <div class="upgrade-info">
+                        <p class="upgrade-name">Napa Fingers</p>
+                        <p class="upgrade-desc">Auto-clicks for Napa</p>
+                        <p>Cost: <span id="cursorCost">15</span> Napas</p>
+                        <p>Owned: <span id="cursorOwned">0</span></p>
+                    </div>
+                    <button id="buyCursor">Buy</button>
+                </div>
+                <div class="upgrade" id="grandma">
+                    <div class="upgrade-icon">👵</div>
+                    <div class="upgrade-info">
+                        <p class="upgrade-name">Grandma Napa</p>
+                        <p class="upgrade-desc">Bakes napas for you</p>
+                        <p>Cost: <span id="grandmaCost">100</span> Napas</p>
+                        <p>Owned: <span id="grandmaOwned">0</span></p>
+                    </div>
+                    <button id="buyGrandma">Buy</button>
+                </div>
+                <div class="upgrade" id="farm">
+                    <div class="upgrade-icon">🌾</div>
+                    <div class="upgrade-info">
+                        <p class="upgrade-name">Napa Farm</p>
+                        <p class="upgrade-desc">Grows napas automatically</p>
+                        <p>Cost: <span id="farmCost">1100</span> Napas</p>
+                        <p>Owned: <span id="farmOwned">0</span></p>
+                    </div>
+                    <button id="buyFarm">Buy</button>
+                </div>
+                <div class="upgrade" id="mine">
+                    <div class="upgrade-icon">⛏️</div>
+                    <div class="upgrade-info">
+                        <p class="upgrade-name">Napa Mine</p>
+                        <p class="upgrade-desc">Mines precious napas</p>
+                        <p>Cost: <span id="mineCost">12000</span> Napas</p>
+                        <p>Owned: <span id="mineOwned">0</span></p>
+                    </div>
+                    <button id="buyMine">Buy</button>
+                </div>
+                <div class="upgrade" id="factory">
+                    <div class="upgrade-icon">🏭</div>
+                    <div class="upgrade-info">
+                        <p class="upgrade-name">Napa Factory</p>
+                        <p class="upgrade-desc">Mass produces napas</p>
+                        <p>Cost: <span id="factoryCost">130000</span> Napas</p>
+                        <p>Owned: <span id="factoryOwned">0</span></p>
+                    </div>
+                    <button id="buyFactory">Buy</button>
+                </div>
+            </div>
+            <div id="prestige-section">
+                <h3>⭐ Prestige</h3>
+                <p>Reset your progress for a multiplier!</p>
+                <p>Current Multiplier: <span id="prestigeMultiplier">1.00</span>x</p>
+                <p>Next Multiplier: <span id="nextMultiplier">1.15</span>x</p>
+                <button id="prestigeButton">Prestige</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
