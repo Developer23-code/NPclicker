@@ -194,7 +194,7 @@ function createBuyHandler(upgrade) {
         if (napas >= upgrade.cost) {
             napas -= upgrade.cost;
             upgrade.owned++;
-            napasPerSecond += upgrade.rate * prestigeMultiplier;
+            napasPerSecond += upgrade.rate;
             upgrade.cost = Math.floor(upgrade.cost * 1.15);
             updateDisplays();
         }
@@ -262,3 +262,6 @@ achievements.forEach(achievement => {
 
 // Initial update
 updateDisplays();
+
+// Disable prestige button initially
+prestigeButton.disabled = true;
