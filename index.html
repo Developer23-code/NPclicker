@@ -3,194 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Napa Clicker - The Ultimate Napa Cabbage Experience</title>
+    <title>Napa Clicker</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
-    <div id="game-container">
-        <!-- Settings Button -->
-        <button id="settingsBtn" class="menu-btn settings-btn" title="Settings">⚙️</button>
-        <button id="statsBtn" class="menu-btn stats-btn" title="Statistics">📈</button>
-        
-        <!-- Settings Modal -->
-        <div id="settingsModal" class="modal hidden">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>⚙️ Settings & Customization</h2>
-                    <button class="close-btn" onclick="closeSettings()">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <div class="settings-group">
-                        <h3>🔊 Audio</h3>
-                        <label>
-                            <input type="checkbox" id="soundEnabled" checked> Enable Sound Effects
-                        </label>
-                        <label>
-                            <input type="checkbox" id="musicEnabled"> Enable Background Music
-                        </label>
-                    </div>
-                    
-                    <div class="settings-group">
-                        <h3>✨ Visual Effects</h3>
-                        <label>
-                            <input type="checkbox" id="particlesEnabled" checked> Floating Particles
-                        </label>
-                        <label>
-                            <input type="checkbox" id="animationsEnabled" checked> Animations
-                        </label>
-                        <label>
-                            <input type="checkbox" id="darkMode"> Dark Mode
-                        </label>
-                    </div>
-                    
-                    <div class="settings-group">
-                        <h3>🎮 Gameplay</h3>
-                        <label>
-                            Enable Auto-Save: <input type="checkbox" id="autoSave" checked>
-                        </label>
-                        <label>
-                            Game Speed: 
-                            <select id="gameSpeed">
-                                <option value="0.5">0.5x (Slow)</option>
-                                <option value="1" selected>1x (Normal)</option>
-                                <option value="1.5">1.5x (Fast)</option>
-                                <option value="2">2x (Very Fast)</option>
-                            </select>
-                        </label>
-                    </div>
-                    
-                    <div class="settings-group">
-                        <h3>💾 Save Data</h3>
-                        <button onclick="saveGame()" class="btn-primary">Save Game</button>
-                        <button onclick="loadGame()" class="btn-primary">Load Game</button>
-                        <button onclick="resetGame()" class="btn-danger">Reset Game</button>
-                    </div>
-                </div>
+<body class="theme-napa">
+    <div id="settings-overlay" class="hidden">
+        <div class="settings-panel glass-panel">
+            <div class="settings-head">
+                <h3>⚙️ Napa Settings</h3>
+                <button id="closeSettings">✕</button>
             </div>
-        </div>
-        
-        <!-- Stats Modal -->
-        <div id="statsModal" class="modal hidden">
-            <div class="modal-content wide">
-                <div class="modal-header">
-                    <h2>📊 Detailed Statistics</h2>
-                    <button class="close-btn" onclick="closeStats()">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <h3>Clicking Stats</h3>
-                            <p>Total Clicks: <span id="totalClicks">0</span></p>
-                            <p>Total Napa Gained: <span id="totalNapaGained">0</span></p>
-                            <p>Avg Per Click: <span id="avgPerClick">0</span></p>
-                            <p>Clicks Per Second: <span id="clicksPerSecond">0</span></p>
-                        </div>
-                        
-                        <div class="stat-card">
-                            <h3>Production Stats</h3>
-                            <p>Current Production: <span id="currentProduction">0</span>/s</p>
-                            <p>Napa Per Second: <span id="napaPerSecond">0</span></p>
-                            <p>Total Buildings: <span id="totalBuildings">0</span></p>
-                            <p>Production Efficiency: <span id="efficiency">0</span>%</p>
-                        </div>
-                        
-                        <div class="stat-card">
-                            <h3>Progress</h3>
-                            <p>Level: <span id="statLevel">0</span></p>
-                            <p>Prestige Count: <span id="statPrestige">0</span></p>
-                            <p>Total Prestige Multiplier: <span id="totalMultiplier">1.00</span>x</p>
-                            <p>Time Played: <span id="timePlayed">0m</span></p>
-                        </div>
-                        
-                        <div class="stat-card">
-                            <h3>Achievements</h3>
-                            <p>Unlocked: <span id="achievementCount">0</span> / <span id="totalAchievements">0</span></p>
-                            <p>Completion: <span id="achievementPercent">0</span>%</p>
-                            <p>Last Unlocked: <span id="lastAchievement">None</span></p>
-                        </div>
-                    </div>
-                </div>
+            <div class="setting-row">
+                <label><input type="checkbox" id="soundToggle" checked> Sound Effects</label>
             </div>
-        </div>
-        
-        <!-- Prestige Notification -->
-        <div id="prestigeNotification" class="prestige-notification hidden">
-            <div class="notification-content">
-                <h2>⭐ PRESTIGE! ⭐</h2>
-                <p id="prestigeMsg"></p>
+            <div class="setting-row">
+                <label><input type="checkbox" id="effectsToggle" checked> Visual Effects</label>
             </div>
-        </div>
-        
-        <div id="game">
-            <!-- Left Pane -->
-            <div id="left-pane" class="pane">
-                <div id="level-section" class="section">
-                    <h3>🌱 Level & Progress</h3>
-                    <div class="level-display">
-                        <p class="big-stat"><span id="levelDisplay">1</span></p>
-                        <p>Experience: <span id="expDisplay">0</span> / <span id="nextLevelExp">1000</span></p>
-                        <div class="progress-bar">
-                            <div class="progress-fill" id="expBar"></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="stats">
-                    <h3>📊 Stats</h3>
-                    <p>Napas: <span id="napas">0</span></p>
-                    <p>Per second: <span id="perSecond">0</span></p>
-                    <p>Total Napas: <span id="totalNapas">0</span></p>
-                    <p>Prestige: <span id="prestigeLevel">0</span></p>
-                    <p>Multiplier: <span id="multiplierDisplay">1.00</span>x</p>
-                </div>
-                
-                <div id="achievements">
-                    <h3>🏆 Achievements</h3>
-                    <div id="achievement-list">
-                        <!-- Achievements will be added here -->
-                    </div>
-                </div>
+            <div class="setting-row">
+                <label>Theme:</label>
+                <select id="themeSelect">
+                    <option value="theme-napa">Napa Glow</option>
+                    <option value="theme-night">Midnight Napa</option>
+                    <option value="theme-sakura">Sakura Napa</option>
+                </select>
             </div>
-            
-            <!-- Center Pane -->
-            <div id="center">
-                <header>
-                    <h1>🥬 Napa Clicker 🥬</h1>
-                </header>
-                <div id="main">
-                    <img id="clickButton" src="https://asset-cdn.schoology.com/system/files/imagecache/profile_reg/pictures/picture-5c9a2e74f2cde5fa22a4021918054936_693993d057dfc.jpg?1765381072" alt="Napa">
-                    <div id="golden-napa" class="hidden">
-                        <img src="https://i.imgur.com/4Z4Z4Z4.png" alt="Golden Napa" id="golden-image">
-                    </div>
-                </div>
-                <div id="news-ticker">
-                    <p id="news-text">Welcome to Napa Clicker! Click Napa to earn Napas! 🥬</p>
-                </div>
-            </div>
-            
-            <!-- Right Pane -->
-            <div id="right-pane" class="pane">
-                <!-- Prestige Section -->
-                <div id="prestige-section" class="section upgrade-box">
-                    <h3>⭐ Prestige</h3>
-                    <p class="small-text">Reset your progress for permanent multipliers!</p>
-                    <p>Current Multiplier: <span id="prestigeMultiplier">1.00</span>x</p>
-                    <p>Next Multiplier: <span id="nextMultiplier">1.15</span>x</p>
-                    <p id="prestigeRequirement" class="highlight">Reach Level 10 to Prestige</p>
-                    <button id="prestigeButton" class="btn-prestige" disabled>Prestige</button>
-                </div>
-                
-                <!-- Store -->
-                <div id="store">
-                    <h3>🏪 Store</h3>
-                    <div id="upgrades-container">
-                        <!-- Upgrades will be added here -->
-                    </div>
-                </div>
+            <div class="setting-row">
+                <p>Customizable experience with theme, sound, and effects controls.</p>
             </div>
         </div>
     </div>
-    
+
+    <div id="notification-container"></div>
+
+    <div id="game">
+        <div id="left-pane" class="glass-panel">
+            <div id="stats" class="panel-block">
+                <h3>📊 Napa Core</h3>
+                <div class="stat-row"><span>Current Napas</span><strong id="napas">0</strong></div>
+                <div class="stat-row"><span>Per second</span><strong id="perSecond">0</strong></div>
+                <div class="stat-row"><span>Total Napas</span><strong id="totalNapas">0</strong></div>
+                <div class="stat-row"><span>Prestige</span><strong id="prestigeLevel">0</strong></div>
+                <div class="stat-row"><span>Multiplier</span><strong id="prestigeMultiplier">1.00x</strong></div>
+                <div class="stat-row"><span>Rank</span><strong id="rankDisplay">Napa Novice</strong></div>
+            </div>
+
+            <div id="detail-stats" class="panel-block">
+                <h3>📈 Detailed Stats</h3>
+                <div class="stat-row"><span>Level</span><strong id="level">1</strong></div>
+                <div class="stat-row"><span>XP</span><strong id="xp">0</strong> / <span id="xpNext">100</span></div>
+                <div class="progress-bar"><div id="xpProgressBar"></div></div>
+                <div class="stat-row"><span>Total Clicks</span><strong id="totalClicks">0</strong></div>
+                <div class="stat-row"><span>Total Upgrades</span><strong id="totalUpgrades">0</strong></div>
+                <div class="stat-row"><span>Prestiges</span><strong id="totalPrestiges">0</strong></div>
+                <div class="stat-row"><span>Highest Level</span><strong id="highestLevel">1</strong></div>
+                <div class="stat-row"><span>Best Rate</span><strong id="highestRate">0</strong></div>
+                <div class="stat-row"><span>Time Played</span><strong id="timePlayed">0s</strong></div>
+            </div>
+
+            <div id="achievements" class="panel-block">
+                <h3>🏆 Achievements</h3>
+                <div id="achievement-list"></div>
+            </div>
+        </div>
+
+        <div id="center" class="glass-panel">
+            <header>
+                <div class="title-row">
+                    <div>
+                        <h1>Napa Clicker</h1>
+                        <p class="tagline">Build the cutest Napa empire with levels, prestige, and mystery upgrades.</p>
+                    </div>
+                    <button id="settingsButton" class="settings-button">⚙️ Settings</button>
+                </div>
+            </header>
+            <div id="main">
+                <img id="clickButton" src="https://asset-cdn.schoology.com/system/files/imagecache/profile_reg/pictures/picture-5c9a2e74f2cde5fa22a4021918054936_693993d057dfc.jpg?1765381072" alt="Napa">
+                <div id="golden-napa" class="hidden">
+                    <img src="https://i.imgur.com/4Z4Z4Z4.png" alt="Golden Napa" id="golden-image">
+                </div>
+            </div>
+            <div id="news-ticker">
+                <p id="news-text">Welcome to Napa Clicker! Click Napa to earn Napas!</p>
+            </div>
+        </div>
+
+        <div id="right-pane" class="glass-panel">
+            <div id="store" class="panel-block">
+                <h3>🏪 Napa Store</h3>
+                <div id="upgrade-list"></div>
+            </div>
+            <div id="prestige-section" class="panel-block">
+                <h3>⭐ Prestige</h3>
+                <p>Prestige unlocks stronger bonuses based on your level.</p>
+                <div class="stat-row"><span>Required Level</span><strong id="requiredPrestigeLevel">10</strong></div>
+                <div class="stat-row"><span>Next Multiplier</span><strong id="nextMultiplier">1.18x</strong></div>
+                <button id="prestigeButton" class="prestige-button">Prestige</button>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
