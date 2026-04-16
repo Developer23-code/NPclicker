@@ -35,51 +35,95 @@
 
     <div id="notification-container"></div>
 
+    <!-- Redeem Code Modal -->
+    <div id="redeem-modal" class="hidden">
+        <div class="redeem-panel glass-panel">
+            <div class="redeem-head">
+                <h3>🎁 Redeem Secret Code</h3>
+                <button id="closeRedeem">✕</button>
+            </div>
+            <input type="text" id="redeem-input" placeholder="Enter secret code..." maxlength="30">
+            <button id="redeem-submit">Redeem</button>
+            <p id="redeem-message" style="display: none;"></p>
+        </div>
+    </div>
+
+    <!-- Planet Exploration Modal -->
+    <div id="planet-modal" class="hidden">
+        <div class="planet-panel glass-panel">
+            <div class="planet-head">
+                <h3 id="planet-title">🌍 Explore Planets</h3>
+                <button id="closePlanet">✕</button>
+            </div>
+            <div id="planet-map"></div>
+            <div id="planet-info" class="hidden">
+                <h4 id="planet-name"></h4>
+                <p id="planet-desc"></p>
+                <div id="planet-stats"></div>
+                <button id="inhabit-button">Inhabit Planet</button>
+            </div>
+        </div>
+    </div>
+
     <div id="game">
         <div id="left-pane" class="glass-panel">
             <div id="stats" class="panel-block">
                 <h3>📊 Napa Core</h3>
-                <div class="stat-row"><span>Current Napas</span><strong id="napas">0</strong></div>
-                <div class="stat-row"><span>Per second</span><strong id="perSecond">0</strong></div>
-                <div class="stat-row"><span>Total Napas</span><strong id="totalNapas">0</strong></div>
-                <div class="stat-row"><span>Prestige</span><strong id="prestigeLevel">0</strong></div>
-                <div class="stat-row"><span>Multiplier</span><strong id="prestigeMultiplier">1.00x</strong></div>
-                <div class="stat-row"><span>Rank</span><strong id="rankDisplay">Napa Novice</strong></div>
+                <div class="stat-row" data-tooltip="Your current location in the cosmos"><span>Current Planet</span><strong id="currentPlanet">🌍 Earth</strong></div>
+                <div class="stat-row" data-tooltip="Your current Napas available to spend on upgrades"><span>Current Napas</span><strong id="napas">0</strong></div>
+                <div class="stat-row" data-tooltip="Napas earned per second from active upgrades"><span>Per second</span><strong id="perSecond">0</strong></div>
+                <div class="stat-row" data-tooltip="Total Napas earned throughout your entire game"><span>Total Napas</span><strong id="totalNapas">0</strong></div>
+                <div class="stat-row" data-tooltip="Your prestige level increases multiplier for future playthroughs"><span>Prestige</span><strong id="prestigeLevel">0</strong></div>
+                <div class="stat-row" data-tooltip="Current multiplier applied to all earned Napas"><span>Multiplier</span><strong id="prestigeMultiplier">1.00x</strong></div>
+                <div class="stat-row" data-tooltip="Your rank based on total Napas and prestige level"><span>Rank</span><strong id="rankDisplay">Napa Novice</strong></div>
             </div>
 
             <div id="detail-stats" class="panel-block">
                 <h3>📈 Detailed Stats</h3>
-                <div class="stat-row"><span>Level</span><strong id="level">1</strong></div>
-                <div class="stat-row"><span>XP</span><strong id="xp">0</strong> / <span id="xpNext">100</span></div>
+                <div class="stat-row" data-tooltip="Your current level from accumulated XP"><span>Level</span><strong id="level">1</strong></div>
+                <div class="stat-row" data-tooltip="Experience points towards next level"><span>XP</span><strong id="xp">0</strong> / <span id="xpNext">100</span></div>
                 <div class="progress-bar"><div id="xpProgressBar"></div></div>
-                <div class="stat-row"><span>Total Clicks</span><strong id="totalClicks">0</strong></div>
-                <div class="stat-row"><span>Total Upgrades</span><strong id="totalUpgrades">0</strong></div>
-                <div class="stat-row"><span>Prestiges</span><strong id="totalPrestiges">0</strong></div>
-                <div class="stat-row"><span>Highest Level</span><strong id="highestLevel">1</strong></div>
-                <div class="stat-row"><span>Best Rate</span><strong id="highestRate">0</strong></div>
-                <div class="stat-row"><span>Time Played</span><strong id="timePlayed">0s</strong></div>
+                <div class="stat-row" data-tooltip="Total times you've clicked the Napa"><span>Total Clicks</span><strong id="totalClicks">0</strong></div>
+                <div class="stat-row" data-tooltip="Number of unique upgrades you've purchased"><span>Total Upgrades</span><strong id="totalUpgrades">0</strong></div>
+                <div class="stat-row" data-tooltip="Number of times you've prestiged"><span>Prestiges</span><strong id="totalPrestiges">0</strong></div>
+                <div class="stat-row" data-tooltip="Highest level reached in current run"><span>Highest Level</span><strong id="highestLevel">1</strong></div>
+                <div class="stat-row" data-tooltip="Best Napas per second ever achieved"><span>Best Rate</span><strong id="highestRate">0</strong></div>
+                <div class="stat-row" data-tooltip="Total time spent playing the game"><span>Time Played</span><strong id="timePlayed">0s</strong></div>
             </div>
 
             <div id="achievements" class="panel-block">
-                <h3>🏆 Achievements</h3>
+                <h3 data-tooltip="Complete achievements for special milestones and bragging rights">🏆 Achievements</h3>
                 <div id="achievement-list"></div>
             </div>
         </div>
 
         <div id="center" class="glass-panel">
             <header>
-                <div class="title-row">
-                    <div>
-                        <h1>Napa Clicker</h1>
-                        <p class="tagline">Build the cutest Napa empire with levels, prestige, and mystery upgrades.</p>
+                <div class="header-content">
+                    <h1>Napa Clicker</h1>
+                    <p class="tagline">Build the cutest Napa empire with levels, prestige, and mystery upgrades.</p>
+                    <div class="header-buttons">
+                        <button id="settingsButton" class="settings-button" data-tooltip="Customize sound, effects, and theme">⚙️ Settings</button>
+                        <button id="redeemButton" class="secret-button" data-tooltip="Enter secret redeem codes">🎁 Redeem</button>
+                        <button id="planetButton" class="secret-button" data-tooltip="Explore and inhabit different planets">🌌 Planets</button>
                     </div>
-                    <button id="settingsButton" class="settings-button">⚙️ Settings</button>
                 </div>
             </header>
             <div id="main">
+                <div id="particle-container"></div>
                 <img id="clickButton" src="https://asset-cdn.schoology.com/system/files/imagecache/profile_reg/pictures/picture-5c9a2e74f2cde5fa22a4021918054936_693993d057dfc.jpg?1765381072" alt="Napa">
                 <div id="golden-napa" class="hidden">
-                    <img src="https://i.imgur.com/4Z4Z4Z4.png" alt="Golden Napa" id="golden-image">
+                    <!-- <img src="https://i.imgur.com/4Z4Z4Z4.png" alt="Golden Napa" id="golden-image"> -->
+                </div>
+            </div>
+            <div id="mini-game" class="panel-block mini-game-frame">
+                <h3 data-tooltip="Rapid tap mini-game for combo bonuses">🎮 Napa Rush</h3>
+                <div id="mini-game-area">
+                    <div id="combo-display">
+                        <p id="combo-text">Combo: <span id="combo-count">0</span></p>
+                        <p id="combo-timer" class="combo-timer">Ready!</p>
+                    </div>
+                    <div id="tap-zone" data-tooltip="Tap rapidly to build combos - 5+ taps for bonus Napas!">Tap Fast Zone!</div>
                 </div>
             </div>
             <div id="news-ticker">
@@ -93,11 +137,11 @@
                 <div id="upgrade-list"></div>
             </div>
             <div id="prestige-section" class="panel-block">
-                <h3>⭐ Prestige</h3>
-                <p>Prestige unlocks stronger bonuses based on your level.</p>
-                <div class="stat-row"><span>Required Level</span><strong id="requiredPrestigeLevel">10</strong></div>
-                <div class="stat-row"><span>Next Multiplier</span><strong id="nextMultiplier">1.18x</strong></div>
-                <button id="prestigeButton" class="prestige-button">Prestige</button>
+                <h3 data-tooltip="Reset to earn permanent multiplier bonuses">⭐ Prestige</h3>
+                <p data-tooltip="Reach higher levels to unlock more powerful prestige bonuses">Prestige unlocks stronger bonuses based on your level.</p>
+                <div class="stat-row" data-tooltip="Minimum level needed to prestige again"><span>Required Level</span><strong id="requiredPrestigeLevel">10</strong></div>
+                <div class="stat-row" data-tooltip="Multiplier you'll gain after prestiging"><span>Next Multiplier</span><strong id="nextMultiplier">1.18x</strong></div>
+                <button id="prestigeButton" class="prestige-button" data-tooltip="Reset level to 1 and gain permanent multiplier bonus">Prestige</button>
             </div>
         </div>
     </div>
