@@ -333,7 +333,23 @@ function saveGameState() {
             id: a.id,
             unlocked: a.unlocked
         })),
+        // Save planet-specific upgrades and achievements
+        planetUpgrades: Object.keys(planetUpgrades).reduce((acc, key) => {
+            acc[key] = planetUpgrades[key].map(u => ({
+                id: u.id,
+                purchased: u.purchased
+            }));
+            return acc;
+        }, {}),
+        planetAchievements: Object.keys(planetAchievements).reduce((acc, key) => {
+            acc[key] = planetAchievements[key].map(a => ({
+                id: a.id,
+                earned: a.earned
+            }));
+            return acc;
+        }, {}),
         lastSessionTime: Date.now(),
+        lastOfflineProductionTime: Date.now(),
         startTime
     };
     localStorage.setItem('napaGameState', JSON.stringify(gameState));
@@ -365,8 +381,15 @@ function loadGameState() {
         level = gameState.level || 1;
         xp = gameState.xp || 0;
         xpToNextLevel = gameState.xpToNextLevel || 100;
-        currentPlanet = gameState.currentPlanet || 'earth';
-        planetsUnlocked = gameState.planetsUnlocked || ['earth'];
+        currentPlanet = gameState.currentPlanet || 'p1';
+        planetsUnlocked = gameState.planetsUnlocked || ['p1'];
+        
+        // Restore planet unlocked states
+        planetsUnlocked.forEach(key => {
+            if (planets[key]) {
+                planets[key].unlocked = true;
+            }
+        });
         
         // Restore upgrades
         if (gameState.upgrades && gameState.upgrades.length > 0) {
@@ -389,16 +412,50 @@ function loadGameState() {
             });
         }
         
-        // Apply offline progress
+        // Restore planet-specific upgrades
+        if (gameState.planetUpgrades) {
+            Object.keys(gameState.planetUpgrades).forEach(planetKey => {
+                if (planetUpgrades[planetKey]) {
+                    gameState.planetUpgrades[planetKey].forEach(saved => {
+                        const upgrade = planetUpgrades[planetKey].find(u => u.id === saved.id);
+                        if (upgrade) {
+                            upgrade.purchased = saved.purchased || false;
+                            // Apply purchased upgrades to napasPerSecond
+                            if (upgrade.purchased && napasPerSecond > 0) {
+                                napasPerSecond *= upgrade.effect;
+                            }
+                        }
+                    });
+                }
+            });
+        }
+        
+        // Restore planet-specific achievements
+        if (gameState.planetAchievements) {
+            Object.keys(gameState.planetAchievements).forEach(planetKey => {
+                if (planetAchievements[planetKey]) {
+                    gameState.planetAchievements[planetKey].forEach(saved => {
+                        const achievement = planetAchievements[planetKey].find(a => a.id === saved.id);
+                        if (achievement) {
+                            achievement.earned = saved.earned || false;
+                        }
+                    });
+                }
+            });
+        }
+        
+        // Apply offline progress with planet bonus
         if (offlineTime > 2 && napasPerSecond > 0) {
+            const currentPlanetData = planets[currentPlanet] || planets['p1'];
+            const planetBonus = currentPlanetData.bonus || 1;
             const levelMultiplier = 1 + level * 0.02;
-            const offlineGain = Math.min(offlineTime, 604800) * napasPerSecond * prestigeMultiplier * levelMultiplier;
+            const offlineGain = Math.min(offlineTime, 604800) * napasPerSecond * prestigeMultiplier * planetBonus * levelMultiplier;
             napas += offlineGain;
             totalNapas += offlineGain;
             const xpGain = offlineGain * 0.45;
             totalXP += xpGain;
             xp += xpGain;
-            createNotification(`📊 Offline Progress: +${formatNumber(offlineGain)} Napas generated!`, 'success');
+            createNotification(`📊 Offline Progress: +${formatNumber(offlineGain)} Napas generated while you were away!`, 'success');
         }
         
         return true;
@@ -499,7 +556,9 @@ function updateDisplays() {
     const effectiveRate = getCurrentRate();
     const currentPlanetEl = document.getElementById('currentPlanet');
     if (currentPlanetEl) {
-        currentPlanetEl.textContent = `${planets[currentPlanet].emoji} ${planets[currentPlanet].name}`;
+        const planetData = planets[currentPlanet] || planets['p1'];
+        const bonusText = planetData.bonus > 1 ? ` (+${Math.round((planetData.bonus - 1) * 100)}%)` : '';
+        currentPlanetEl.textContent = `${planetData.emoji} ${planetData.name}${bonusText}`;
     }
     napasDisplay.textContent = formatNumber(napas);
     perSecondDisplay.textContent = effectiveRate.toFixed(1);
@@ -693,6 +752,30 @@ function mainLoop() {
     }
 }
 
+// Process background production when tab becomes visible
+function handlePageVisibilityChange() {
+    if (document.hidden) {
+        // Tab is hidden - save state
+        saveGameState();
+    } else {
+        // Tab is now visible - calculate and apply any accumulated production
+        const timeSinceLastSave = (Date.now() - lastOfflineProductionTime) / 1000;
+        if (timeSinceLastSave > 0.5 && napasPerSecond > 0) {
+            const currentPlanetData = planets[currentPlanet] || planets['p1'];
+            const planetBonus = currentPlanetData.bonus || 1;
+            const levelMultiplier = 1 + level * 0.02;
+            const backgroundGain = timeSinceLastSave * napasPerSecond * prestigeMultiplier * planetBonus * levelMultiplier;
+            if (backgroundGain > 0) {
+                napas += backgroundGain;
+                totalNapas += backgroundGain;
+                gainXP(backgroundGain * 0.45);
+                createNotification(`✨ Background Production: +${formatNumber(backgroundGain)} Napas while tab was inactive!`, 'success');
+            }
+            lastOfflineProductionTime = Date.now();
+        }
+    }
+}
+
 // Tooltip system
 let activeTooltip = null;
 
@@ -758,8 +841,9 @@ function updateTooltipPosition(element, tooltip, mouseEvent = null) {
 }
 
 // ===== REDEEM CODE SYSTEM =====
-let currentPlanet = 'earth';
-let planetsUnlocked = ['earth'];
+let currentPlanet = 'p1';
+let planetsUnlocked = ['p1'];
+let lastOfflineProductionTime = Date.now();
 
 const redeemCodes = {
     'napavortex': { reward: 'napas', amount: 50000, message: 'The Napa Vortex opens!' },
@@ -771,100 +855,143 @@ const redeemCodes = {
     'moonlight': { reward: 'napas', amount: 75000, message: 'Moonlight energy surges!' },
     'napacore': { reward: 'napasPerSecond', amount: 50, message: 'You found the Napa core!' },
     'prophecy': { reward: 'level', amount: 10, message: 'The prophecy fulfills!' },
-    'eternal': { reward: 'napas', amount: 500000, message: 'Eternal Napa blessing!' }
+    'eternal': { reward: 'napas', amount: 50000000000000, message: 'Eternal Napa blessing!' }
 };
 
 const planets = {
-    earth: {
-        name: 'Earth',
-        emoji: '🌍',
-        desc: 'Your home planet where the Napa journey begins.',
-        bonus: 1,
-        unlocked: true,
-        milestone: 0,
-        children: ['venus', 'mars']
-    },
-    venus: {
-        name: 'Venus',
-        emoji: '🔥',
-        desc: 'A scorching hot planet with intense Napa growth.',
-        bonus: 1.25,
-        unlocked: false,
-        milestone: 100,
-        children: ['mercury', 'saturn']
-    },
-    mars: {
-        name: 'Mars',
-        emoji: '🔴',
-        desc: 'The red planet holds untapped Napa reserves.',
-        bonus: 1.3,
-        unlocked: false,
-        milestone: 150,
-        children: ['jupiter', 'neptune']
-    },
-    mercury: {
-        name: 'Mercury',
-        emoji: '⚡',
-        desc: 'Swift Mercury accelerates your production.',
-        bonus: 1.5,
-        unlocked: false,
-        milestone: 300,
-        children: ['sun', 'pluto']
-    },
-    saturn: {
-        name: 'Saturn',
-        emoji: '💍',
-        desc: 'Beautiful ringed planet with ring bonuses.',
-        bonus: 1.4,
-        unlocked: false,
-        milestone: 250,
-        children: ['uranus', 'neptune']
-    },
-    jupiter: {
-        name: 'Jupiter',
-        emoji: '🌀',
-        desc: 'Massive gas giant with enormous Napa storms.',
-        bonus: 1.6,
-        unlocked: false,
-        milestone: 350,
-        children: ['saturn', 'pluto']
-    },
-    neptune: {
-        name: 'Neptune',
-        emoji: '🌊',
-        desc: 'Distant water world with icy Napa.',
-        bonus: 1.55,
-        unlocked: false,
-        milestone: 400,
-        children: ['uranus']
-    },
-    uranus: {
-        name: 'Uranus',
-        emoji: '🧊',
-        desc: 'Frozen planet with crystal Napa deposits.',
-        bonus: 1.7,
-        unlocked: false,
-        milestone: 450,
-        children: ['pluto', 'sun']
-    },
-    pluto: {
-        name: 'Pluto',
-        emoji: '❄️',
-        desc: 'Dwarf planet at the edge of explored space.',
-        bonus: 1.8,
-        unlocked: false,
-        milestone: 500,
-        children: ['sun']
-    },
-    sun: {
-        name: 'The Sun',
-        emoji: '☀️',
-        desc: 'The ultimate destination - pure Napa energy.',
-        bonus: 2.5,
-        unlocked: false,
-        milestone: 1000,
-        children: []
-    }
+    // Tier 1 - Starting Point
+    p1: { id: 1, name: 'Earth', emoji: '🌍', desc: 'Your home planet. The Napa journey begins here.', bonus: 1, unlocked: true, milestone: 0, color: '#00ff00', parents: [], children: ['p2', 'p3'] },
+    
+    // Tier 2 - First Branches
+    p2: { id: 2, name: 'Venus', emoji: '🔥', desc: 'A scorching hot planet with intense Napa growth.', bonus: 1.15, unlocked: false, milestone: 10, color: '#ffaa00', parents: ['p1'], children: ['p4', 'p5'] },
+    p3: { id: 3, name: 'Mercury', emoji: '⚡', desc: 'Swift Mercury accelerates your production.', bonus: 1.12, unlocked: false, milestone: 12, color: '#ffff00', parents: ['p1'], children: ['p6', 'p7'] },
+    
+    // Tier 3
+    p4: { id: 4, name: 'Mars', emoji: '🔴', desc: 'The red planet holds untapped Napa reserves.', bonus: 1.25, unlocked: false, milestone: 30, color: '#ff4444', parents: ['p2'], children: ['p8', 'p9'] },
+    p5: { id: 5, name: 'Jupiter', emoji: '🌀', desc: 'Massive gas giant with enormous Napa storms.', bonus: 1.22, unlocked: false, milestone: 35, color: '#cc7722', parents: ['p2'], children: ['p10', 'p11'] },
+    p6: { id: 6, name: 'Saturn', emoji: '💍', desc: 'Beautiful ringed planet with ring bonuses.', bonus: 1.20, unlocked: false, milestone: 32, color: '#ffeecc', parents: ['p3'], children: ['p12', 'p13'] },
+    p7: { id: 7, name: 'Uranus', emoji: '🧊', desc: 'Frozen planet with crystal Napa deposits.', bonus: 1.18, unlocked: false, milestone: 28, color: '#00ccff', parents: ['p3'], children: ['p14', 'p15'] },
+    
+    // Tier 4
+    p8: { id: 8, name: 'Neptune', emoji: '🌊', desc: 'Distant water world with icy Napa.', bonus: 1.35, unlocked: false, milestone: 55, color: '#0066ff', parents: ['p4'], children: ['p16', 'p17'] },
+    p9: { id: 9, name: 'Pluto', emoji: '❄️', desc: 'Dwarf planet at the edge of explored space.', bonus: 1.32, unlocked: false, milestone: 50, color: '#999999', parents: ['p4'], children: ['p18', 'p19'] },
+    p10: { id: 10, name: 'Io', emoji: '🌋', desc: 'Volcanic moon with fiery Napa flows.', bonus: 1.30, unlocked: false, milestone: 60, color: '#ff6600', parents: ['p5'], children: ['p20', 'p21'] },
+    p11: { id: 11, name: 'Europa', emoji: '🧊', desc: 'Icy moon with hidden Napa oceans.', bonus: 1.28, unlocked: false, milestone: 58, color: '#aaccff', parents: ['p5'], children: ['p22', 'p23'] },
+    p12: { id: 12, name: 'Titan', emoji: '🌫️', desc: 'Methane-rich moon with dense Napa atmosphere.', bonus: 1.26, unlocked: false, milestone: 56, color: '#ff9944', parents: ['p6'], children: ['p24', 'p25'] },
+    p13: { id: 13, name: 'Enceladus', emoji: '✨', desc: 'Shimmering ice moon with Napa geysers.', bonus: 1.24, unlocked: false, milestone: 54, color: '#ffffff', parents: ['p6'], children: ['p26', 'p27'] },
+    p14: { id: 14, name: 'Triton', emoji: '❄️', desc: 'Icy moon with frozen Napa methane.', bonus: 1.40, unlocked: false, milestone: 65, color: '#4488ff', parents: ['p7'], children: ['p28', 'p29'] },
+    p15: { id: 15, name: 'Oberon', emoji: '🌑', desc: 'Dark moon with mysterious Napa forces.', bonus: 1.38, unlocked: false, milestone: 63, color: '#333333', parents: ['p7'], children: ['p30', 'p31'] },
+    
+    // Tier 5
+    p16: { id: 16, name: 'The Sun', emoji: '☀️', desc: 'Pure stellar Napa energy at the core.', bonus: 1.50, unlocked: false, milestone: 80, color: '#ffff00', parents: ['p8'], children: ['p32', 'p33'] },
+    p17: { id: 17, name: 'Proxima', emoji: '📍', desc: 'Nearest star with exotic Napa particles.', bonus: 1.48, unlocked: false, milestone: 78, color: '#ffaa44', parents: ['p8'], children: ['p34', 'p35'] },
+    p18: { id: 18, name: 'Kepler-22b', emoji: '🟢', desc: 'Earth-like planet with bountiful Napa.', bonus: 1.45, unlocked: false, milestone: 75, color: '#00ff00', parents: ['p9'], children: ['p36', 'p37'] },
+    p19: { id: 19, name: 'TRAPPIST-1d', emoji: '🟣', desc: 'Exoplanet in a rare Napa-rich system.', bonus: 1.42, unlocked: false, milestone: 72, color: '#ff00ff', parents: ['p9'], children: ['p38', 'p39'] },
+    p20: { id: 20, name: 'Proxima Centauri', emoji: '✴️', desc: 'Stellar Napa forge of the nearest system.', bonus: 1.52, unlocked: false, milestone: 85, color: '#ff6600', parents: ['p10'], children: ['p40', 'p41'] },
+    p21: { id: 21, name: 'Sirius', emoji: '⭐', desc: 'Brightest star with concentrated Napa.', bonus: 1.55, unlocked: false, milestone: 88, color: '#ffffff', parents: ['p10'], children: ['p42', 'p43'] },
+    p22: { id: 22, name: 'Betelgeuse', emoji: '🌟', desc: 'Red supergiant with massive Napa reserves.', bonus: 1.58, unlocked: false, milestone: 90, color: '#ff4444', parents: ['p11'], children: ['p44', 'p45'] },
+    p23: { id: 23, name: 'Vega', emoji: '💫', desc: 'Blue star with crystalline Napa.', bonus: 1.56, unlocked: false, milestone: 89, color: '#44aaff', parents: ['p11'], children: ['p46', 'p47'] },
+    p24: { id: 24, name: 'Rigel', emoji: '🌠', desc: 'Blazing star with intense Napa core.', bonus: 1.60, unlocked: false, milestone: 92, color: '#0099ff', parents: ['p12'], children: ['p48', 'p49'] },
+    p25: { id: 25, name: 'Antares', emoji: '🔥', desc: 'Red hypergiant with supreme Napa power.', bonus: 1.65, unlocked: false, milestone: 95, color: '#ff3333', parents: ['p12'], children: ['p50'] },
+    
+    // Path to NAPA PLANET - Special Tiers
+    p26: { id: 26, name: 'The Void', emoji: '⚫', desc: 'Empty space between stars, strange Napa zones.', bonus: 1.70, unlocked: false, milestone: 100, color: '#000000', parents: ['p13'], children: [] },
+    p27: { id: 27, name: 'Stargate Alpha', emoji: '🟦', desc: 'Ancient portal to distant Napa realms.', bonus: 1.72, unlocked: false, milestone: 102, color: '#0033ff', parents: ['p13'], children: [] },
+    p28: { id: 28, name: 'Napa Nebula', emoji: '🌌', desc: 'Cosmic cloud of condensed Napa essence.', bonus: 1.75, unlocked: false, milestone: 105, color: '#6600ff', parents: ['p14'], children: [] },
+    p29: { id: 29, name: 'Crystal Realm', emoji: '💎', desc: 'Dimension of pure crystallized Napa.', bonus: 1.78, unlocked: false, milestone: 108, color: '#00ffff', parents: ['p14'], children: [] },
+    p30: { id: 30, name: 'Dimensional Gate', emoji: '🌀', desc: 'Threshold to alternate Napa dimensions.', bonus: 1.80, unlocked: false, milestone: 110, color: '#ff00ff', parents: ['p15'], children: [] },
+    p31: { id: 31, name: 'Quantum Realm', emoji: '⚛️', desc: 'Subatomic Napa energy field.', bonus: 1.82, unlocked: false, milestone: 112, color: '#ff66ff', parents: ['p15'], children: [] },
+    p32: { id: 32, name: 'Celestial Library', emoji: '📚', desc: 'Repository of cosmic Napa knowledge.', bonus: 1.85, unlocked: false, milestone: 115, color: '#ffcc99', parents: ['p16'], children: [] },
+    p33: { id: 33, name: 'Eternal Void', emoji: '🌌', desc: 'Infinity itself, boundless Napa potential.', bonus: 1.88, unlocked: false, milestone: 118, color: '#1a1a1a', parents: ['p16'], children: [] },
+    p34: { id: 34, name: 'Napa Lighthouse', emoji: '🔦', desc: 'Beacon of pure Napa illumination.', bonus: 1.90, unlocked: false, milestone: 120, color: '#ffff66', parents: ['p17'], children: [] },
+    p35: { id: 35, name: 'Heaven\'s Gate', emoji: '⛩️', desc: 'The divine entrance to Napa ascension.', bonus: 1.92, unlocked: false, milestone: 122, color: '#ffaaff', parents: ['p17'], children: [] },
+    p36: { id: 36, name: 'Paradise Isle', emoji: '🏝️', desc: 'Tropical paradise island of Napa fruits.', bonus: 1.95, unlocked: false, milestone: 125, color: '#44ff44', parents: ['p18'], children: [] },
+    p37: { id: 37, name: 'Mount Olympus', emoji: '⛰️', desc: 'Home of the Napa gods themselves.', bonus: 2.00, unlocked: false, milestone: 130, color: '#cccccc', parents: ['p18'], children: [] },
+    p38: { id: 38, name: 'The Abyss', emoji: '🕳️', desc: 'Deepest depths of Napa mystery.', bonus: 2.05, unlocked: false, milestone: 135, color: '#330033', parents: ['p19'], children: [] },
+    p39: { id: 39, name: 'Napa Horizon', emoji: '🌅', desc: 'Event horizon of pure Napa concentration.', bonus: 2.10, unlocked: false, milestone: 140, color: '#ff9900', parents: ['p19'], children: [] },
+    p40: { id: 40, name: 'Ethereal Sanctuary', emoji: '✨', desc: 'Sacred Napa sanctuary beyond reality.', bonus: 2.15, unlocked: false, milestone: 145, color: '#ffff99', parents: ['p20'], children: [] },
+    p41: { id: 41, name: 'Cosmic Forge', emoji: '⚙️', desc: 'Where Napa itself is forged anew.', bonus: 2.20, unlocked: false, milestone: 150, color: '#ff9966', parents: ['p20'], children: [] },
+    p42: { id: 42, name: 'Genesis Core', emoji: '🌀', desc: 'Source of all Napa creation.', bonus: 2.25, unlocked: false, milestone: 155, color: '#0099cc', parents: ['p21'], children: [] },
+    p43: { id: 43, name: 'Infinity Tower', emoji: '🗼', desc: 'Infinite tower of accumulated Napa.', bonus: 2.30, unlocked: false, milestone: 160, color: '#ff66cc', parents: ['p21'], children: [] },
+    p44: { id: 44, name: 'Napa Singularity', emoji: '🔯', desc: 'Point of ultimate Napa concentration.', bonus: 2.35, unlocked: false, milestone: 165, color: '#aa00ff', parents: ['p22'], children: [] },
+    p45: { id: 45, name: 'Mythical Realm', emoji: '🐉', desc: 'Realm of legendary Napa creatures.', bonus: 2.40, unlocked: false, milestone: 170, color: '#ff4488', parents: ['p22'], children: [] },
+    p46: { id: 46, name: 'Paradise Peak', emoji: '👑', desc: 'The highest peak of Napa perfection.', bonus: 2.45, unlocked: false, milestone: 175, color: '#ffff00', parents: ['p23'], children: [] },
+    p47: { id: 47, name: 'Sacred Garden', emoji: '🌺', desc: 'Immortal garden where Napas grow.', bonus: 2.50, unlocked: false, milestone: 180, color: '#ff44ff', parents: ['p23'], children: [] },
+    p48: { id: 48, name: 'Napa Academy', emoji: '🎓', desc: 'University of ultimate Napa mastery.', bonus: 2.55, unlocked: false, milestone: 185, color: '#4488ff', parents: ['p24'], children: [] },
+    p49: { id: 49, name: 'Divine Throne', emoji: '👸', desc: 'Seat of the Napa Empress.', bonus: 2.60, unlocked: false, milestone: 190, color: '#ffaa00', parents: ['p24'], children: ['p50'] },
+    
+    // ULTIMATE GOAL - Planet 50
+    p50: { id: 50, name: 'NAPA PLANET', emoji: '🍜', desc: 'The ultimate destination - the legendary NAPA PLANET itself! You have reached the end... or the beginning of a new adventure!', bonus: 3.0, unlocked: false, milestone: 200, color: '#00ff00', parents: ['p25', 'p49'], children: [], isGoal: true }
+};
+
+// ===== PLANET-SPECIFIC UPGRADES =====
+const planetUpgrades = {
+    p1: [
+        { id: 'earth-soil', name: '🌱 Rich Earth Soil', desc: 'Increases Napa yield from Earth soil by 10%', cost: 100, effect: 1.10, tier: 1, purchased: false },
+        { id: 'earth-spring', name: '💧 Natural Spring', desc: 'Add irrigation system for +15% production', cost: 500, effect: 1.15, tier: 2, purchased: false },
+        { id: 'earth-greenhouse', name: '🌿 Global Greenhouse', desc: 'Cover-all greenhouse magnifies growth by 25%', cost: 2000, effect: 1.25, tier: 3, purchased: false }
+    ],
+    p2: [
+        { id: 'venus-heat', name: '🔥 Heat Harness', desc: 'Capture volcanic heat for +20% bonus', cost: 1000, effect: 1.20, tier: 1, purchased: false },
+        { id: 'venus-shield', name: '🛡️ Heat Shield', desc: 'Advanced protection unlocks 30% more production', cost: 5000, effect: 1.30, tier: 2, purchased: false },
+        { id: 'venus-reactor', name: '⚛️ Thermal Reactor', desc: 'Infinite thermal reactor boosts by 50%', cost: 20000, effect: 1.50, tier: 3, purchased: false }
+    ],
+    p3: [
+        { id: 'mercury-speed', name: '⚡ Speed Catalyst', desc: 'Harness Mercury\'s speed for +18% boost', cost: 800, effect: 1.18, tier: 1, purchased: false },
+        { id: 'mercury-orbit', name: '🌀 Orbital Sync', desc: 'Synchronize with orbit for +28% production', cost: 4000, effect: 1.28, tier: 2, purchased: false },
+        { id: 'mercury-flux', name: '✨ Quantum Flux', desc: 'Tap quantum particles for 45% increase', cost: 18000, effect: 1.45, tier: 3, purchased: false }
+    ],
+    p4: [
+        { id: 'mars-mining', name: '⛏️ Deep Mining', desc: 'Mine Mars core Napa deposits (+22%)', cost: 2000, effect: 1.22, tier: 1, purchased: false },
+        { id: 'mars-colony', name: '🏗️ Colony Expansion', desc: 'Establish mega-colony for 35% bonus', cost: 8000, effect: 1.35, tier: 2, purchased: false }
+    ],
+    p5: [
+        { id: 'jupiter-storm', name: '🌪️ Storm Alchemy', desc: 'Control Jupiter storms (+20% production)', cost: 1500, effect: 1.20, tier: 1, purchased: false },
+        { id: 'jupiter-core', name: '💎 Core Tapping', desc: 'Access Jupiter core for 32% boost', cost: 6500, effect: 1.32, tier: 2, purchased: false }
+    ],
+    p8: [
+        { id: 'neptune-ice', name: '❄️ Ice Compression', desc: 'Compress icy Napa for +25% production', cost: 5000, effect: 1.25, tier: 1, purchased: false },
+        { id: 'neptune-abyss', name: '🌊 Abyss Dive', desc: 'Deep ocean mining yields 40% bonus', cost: 15000, effect: 1.40, tier: 2, purchased: false }
+    ],
+    p16: [
+        { id: 'sun-photon', name: '☀️ Photon Harness', desc: 'Capture stellar photons (+30%)', cost: 8000, effect: 1.30, tier: 1, purchased: false },
+        { id: 'sun-fusion', name: '⚛️ Fusion Core', desc: 'Miniature fusion reactor (50% boost)', cost: 30000, effect: 1.50, tier: 2, purchased: false }
+    ],
+    p25: [
+        { id: 'antares-supernova', name: '🔥 Supernova Chain', desc: 'Channel supernova energy (+40%)', cost: 15000, effect: 1.40, tier: 1, purchased: false },
+        { id: 'antares-singularity', name: '🔯 Micro-Singularity', desc: 'Create controlled black hole (60% boost)', cost: 50000, effect: 1.60, tier: 2, purchased: false }
+    ],
+    p50: [
+        { id: 'napa-ascension', name: '👑 Napa Ascension', desc: 'Ultimate transformation unlocked!', cost: 0, effect: 2.0, tier: 5, purchased: false },
+        { id: 'napa-omnipotence', name: '🍜 Omnipotent Napa', desc: 'All-consuming Napa power (100% bonus)', cost: 0, effect: 2.0, tier: 5, purchased: false }
+    ]
+};
+
+// ===== PLANET-SPECIFIC ACHIEVEMENTS =====
+const planetAchievements = {
+    p1: [
+        { id: 'earth-born', name: '🌍 Earthling', desc: 'Reach level 5 on Earth', condition: 'level >= 5 && currentPlanet === "p1"', earned: false },
+        { id: 'earth-master', name: '🌎 Terraformer', desc: 'Spend 50,000 napas on Earth upgrades', condition: 'custom', earned: false }
+    ],
+    p2: [
+        { id: 'venus-traveler', name: '🔥 Fire Seeker', desc: 'Reach Venus and survive the heat', condition: 'currentPlanet === "p2" && level >= 10', earned: false }
+    ],
+    p5: [
+        { id: 'jupiter-storm-rider', name: '🌀 Storm Rider', desc: 'Reach Jupiter and collect 1 million napas', condition: 'currentPlanet === "p5" && totalNapas >= 1000000', earned: false }
+    ],
+    p8: [
+        { id: 'neptune-explorer', name: '🌊 Deep Diver', desc: 'Reach Neptune, the distant water world', condition: 'currentPlanet === "p8" && level >= 55', earned: false }
+    ],
+    p16: [
+        { id: 'sun-pilgrim', name: '☀️ Solar Pilgrim', desc: 'Stand on the Sun itself', condition: 'currentPlanet === "p16" && level >= 80', earned: false }
+    ],
+    p25: [
+        { id: 'antares-champion', name: '🔥 Red Giant Champion', desc: 'Reach the magnificent Antares', condition: 'currentPlanet === "p25" && level >= 95', earned: false }
+    ],
+    p50: [
+        { id: 'napa-legend', name: '🍜 NAPA LEGEND', desc: 'Reach the legendary NAPA PLANET', condition: 'currentPlanet === "p50"', earned: false },
+        { id: 'napa-master', name: '👑 Napa Emperor', desc: 'Complete all planet achievements', condition: 'totalAchievements === 50', earned: false }
+    ]
 };
 
 let easterEggsTrigger = {
@@ -944,7 +1071,14 @@ function showPlanetMap() {
             planets[key].unlocked = true;
             if (!planetsUnlocked.includes(key)) {
                 planetsUnlocked.push(key);
-                createNotification(`🌌 New planet unlocked: ${planets[key].name}!`, 'success');
+                const isGoal = planets[key].isGoal;
+                createNotification(`${isGoal ? '🎉' : '🌌'} New planet unlocked: ${planets[key].name}!${isGoal ? ' YOU REACHED THE GOAL!' : ''}`, 'success');
+                if (isGoal) {
+                    // Add special celebration
+                    for (let i = 0; i < 15; i++) {
+                        setTimeout(() => createFloatingElement(['🍜', '✨', '🎉'][Math.floor(Math.random() * 3)]), i * 50);
+                    }
+                }
             }
         }
     });
@@ -952,29 +1086,97 @@ function showPlanetMap() {
     const mapContainer = document.getElementById('planet-map');
     mapContainer.innerHTML = '';
     
-    Object.keys(planets).forEach(key => {
-        const planet = planets[key];
-        const node = document.createElement('div');
-        node.className = 'planet-node';
+    // Build tree structure by levels
+    const treeStructure = buildPlanetTree();
+    
+    // Render tree
+    treeStructure.forEach((level, levelIndex) => {
+        const levelDiv = document.createElement('div');
+        levelDiv.className = 'planet-tree-level';
         
-        if (key === currentPlanet) {
-            node.classList.add('current');
-        } else if (planet.unlocked) {
-            node.classList.add('unlocked');
-        } else {
-            node.classList.add('locked');
-        }
+        level.forEach(key => {
+            const planet = planets[key];
+            const node = document.createElement('div');
+            node.className = 'planet-node';
+            
+            // Special styling for NAPA PLANET
+            if (planet.isGoal) {
+                if (planet.unlocked) {
+                    node.classList.add('napa-planet-achieved');
+                } else {
+                    node.classList.add('napa-planet-node');
+                }
+            }
+            
+            node.style.borderColor = planet.color + '60';
+            node.style.backgroundColor = planet.color + '20';
+            
+            if (key === currentPlanet) {
+                node.classList.add('current');
+                node.style.borderColor = planet.color + 'ff';
+                node.style.boxShadow = `0 0 20px ${planet.color}80`;
+            } else if (planet.unlocked) {
+                node.classList.add('unlocked');
+            } else {
+                node.classList.add('locked');
+            }
+            
+            node.innerHTML = `
+                <div class="planet-emoji">${planet.emoji}</div>
+                <div class="planet-name">${planet.name}</div>
+                <div class="planet-number">Lvl ${planet.milestone}</div>
+            `;
+            
+            // Add hover tooltip showing requirements
+            node.addEventListener('mouseenter', (e) => {
+                showPlanetTooltip(key, e);
+            });
+            
+            node.addEventListener('mouseleave', () => {
+                hidePlanetTooltip();
+            });
+            
+            // Click to show detailed statistics and upgrades
+            node.addEventListener('click', () => {
+                showPlanetDetailedStats(key);
+            });
+            
+            levelDiv.appendChild(node);
+        });
         
-        node.innerHTML = `<div class="planet-emoji">${planet.emoji}</div><div class="planet-name">${planet.name}</div>`;
+        mapContainer.appendChild(levelDiv);
+    });
+}
+
+function buildPlanetTree() {
+    // Create tree levels starting from p1
+    const levels = [];
+    const visited = new Set();
+    const currentLevel = ['p1'];
+    visited.add('p1');
+    
+    while (currentLevel.length > 0) {
+        levels.push([...currentLevel]);
+        const nextLevel = [];
         
-        node.addEventListener('click', () => {
-            if (planet.unlocked || key === currentPlanet) {
-                showPlanetInfo(key);
+        currentLevel.forEach(key => {
+            const planet = planets[key];
+            if (planet.children && planet.children.length > 0) {
+                planet.children.forEach(childKey => {
+                    if (!visited.has(childKey)) {
+                        nextLevel.push(childKey);
+                        visited.add(childKey);
+                    }
+                });
             }
         });
         
-        mapContainer.appendChild(node);
-    });
+        if (nextLevel.length === 0) break;
+        currentLevel.length = 0;
+        currentLevel.push(...nextLevel);
+    }
+    
+    return levels;
 }
 
 function showPlanetInfo(key) {
@@ -985,24 +1187,39 @@ function showPlanetInfo(key) {
     const statsEl = document.getElementById('planet-stats');
     const inhabitBtn = document.getElementById('inhabit-button');
     
+    // Apply planet-specific styling
+    const planetPanel = document.querySelector('.planet-panel');
+    planetPanel.style.borderColor = planet.color + '80';
+    planetPanel.style.background = `linear-gradient(135deg, ${planet.color}15, ${planet.color}05)`;
+    
     nameEl.textContent = `${planet.emoji} ${planet.name}`;
+    nameEl.style.color = planet.color;
     descEl.textContent = planet.desc;
+    descEl.style.color = planet.color + 'dd';
+    
+    const bonusPercent = Math.round((planet.bonus - 1) * 100);
     statsEl.innerHTML = `
-        <div>Bonus Multiplier: <strong>${planet.bonus}x</strong></div>
-        <div>Planet Level Requirement: <strong>${planet.milestone}</strong></div>
-        <div>Your Level: <strong>${level}</strong></div>
+        <div style="padding: 12px; background: ${planet.color}22; border-radius: 8px; margin: 12px 0;">
+            <div style="margin: 8px 0;"><strong>Bonus Multiplier:</strong> <span style="color: ${planet.color}; font-weight: bold;">${planet.bonus.toFixed(2)}x ${bonusPercent > 0 ? '+' + bonusPercent + '%' : ''}</span></div>
+            <div style="margin: 8px 0;"><strong>Planet Level Requirement:</strong> <span style="color: ${planet.color};">${planet.milestone}</span></div>
+            <div style="margin: 8px 0;"><strong>Your Level:</strong> <span style="color: ${level >= planet.milestone ? '#00ff00' : '#ff4444'};">${level}</span></div>
+            ${planet.isGoal ? `<div style="margin: 12px 0; padding: 12px; background: ${planet.color}44; border-radius: 8px; text-align: center; font-weight: bold; color: #ffff00;">🎉 THIS IS THE LEGENDARY NAPA PLANET! 🎉</div>` : ''}
+        </div>
     `;
     
     if (key === currentPlanet) {
-        inhabitBtn.textContent = 'Current Location';
+        inhabitBtn.textContent = '✓ Current Location';
         inhabitBtn.disabled = true;
+        inhabitBtn.style.background = '#44ff4480';
     } else if (planet.unlocked) {
         inhabitBtn.textContent = `Inhabit ${planet.name}`;
         inhabitBtn.disabled = false;
+        inhabitBtn.style.background = `linear-gradient(135deg, ${planet.color}, ${planet.color}dd)`;
         inhabitBtn.onclick = () => inhabitPlanet(key);
     } else {
         inhabitBtn.textContent = `Locked (Need Level ${planet.milestone})`;
         inhabitBtn.disabled = true;
+        inhabitBtn.style.background = '#66666680';
     }
     
     infoDiv.classList.remove('hidden');
@@ -1016,17 +1233,246 @@ function inhabitPlanet(key) {
     currentPlanet = key;
     const planetEl = document.getElementById('currentPlanet');
     if (planetEl) {
-        planetEl.textContent = `${planet.emoji} ${planet.name}`;
+        const bonusText = planet.bonus > 1 ? ` (+${Math.round((planet.bonus - 1) * 100)}%)` : '';
+        planetEl.textContent = `${planet.emoji} ${planet.name}${bonusText}`;
     }
     
     // Apply planet bonus
     napasPerSecond = napasPerSecond / oldBonus * planet.bonus;
     
-    createNotification(`✨ You have inhabited ${planet.name}! +${Math.round((planet.bonus - 1) * 100)}% bonus!`, 'success');
+    const bonusPercent = Math.round((planet.bonus - 1) * 100);
+    const message = planet.isGoal 
+        ? `🎉 YOU HAVE INHABITED THE LEGENDARY NAPA PLANET! 🎉 The ultimate journey is complete!`
+        : `✨ You have inhabited ${planet.name}! +${bonusPercent}% production bonus!`;
+    
+    createNotification(message, 'success');
     playSuccessSound();
-    createFloatingElement('🌍', false, mainDiv.getBoundingClientRect().width / 2, 150);
+    createFloatingElement(planet.emoji, false, mainDiv.getBoundingClientRect().width / 2, 150);
     updateDisplays();
     showPlanetMap();
+    
+    // Special celebration if NAPA PLANET reached
+    if (planet.isGoal) {
+        for (let i = 0; i < 20; i++) {
+            setTimeout(() => createFloatingElement(['🍜', '✨', '🎉', '👑'][Math.floor(Math.random() * 4)]), i * 40);
+        }
+    }
+    
+    // Check planet-specific achievements
+    checkPlanetAchievements(key);
+}
+
+// ===== ADVANCED PLANET SYSTEM: TOOLTIPS & STATISTICS =====
+
+function showPlanetTooltip(planetKey, mouseEvent) {
+    const planet = planets[planetKey];
+    const tooltip = document.getElementById('planet-tooltip');
+    
+    const parentNames = planet.parents.map(p => planets[p].name).join(', ') || 'None';
+    const children = planet.children.length > 0 ? planet.children.map(p => planets[p].name).join(', ') : 'None';
+    
+    // Calculate production for this planet
+    const levelMult = 1 + (level || 1) * 0.02;
+    const production = napasPerSecond * planet.bonus * levelMult;
+    
+    const html = `
+        <div class="tooltip-title">${planet.emoji} ${planet.name}</div>
+        <div class="tooltip-stat"><strong>ID:</strong> P${planet.id}</div>
+        <div class="tooltip-stat"><strong>Requirement:</strong> Level ${planet.milestone}</div>
+        <div class="tooltip-stat" style="color: ${planet.color}; font-weight: bold;"><strong>Bonus:</strong> ${(planet.bonus * 100).toFixed(0)}% (+${((planet.bonus - 1) * 100).toFixed(1)}%)</div>
+        <div class="tooltip-stat"><strong>Current Status:</strong> ${level >= planet.milestone ? '✅ Unlocked' : `🔒 Need Level ${planet.milestone - level}`}</div>
+        <div class="tooltip-stat"><strong>Est. Production:</strong> ${production.toFixed(1)}/sec</div>
+        <div class="tooltip-divider"></div>
+        <div class="tooltip-stat"><strong>Parents:</strong> ${parentNames}</div>
+        <div class="tooltip-stat"><strong>Children:</strong> ${children}</div>
+        <div class="tooltip-stat" style="text-align: center; margin-top: 8px; font-size: 0.9em; color: #ffff00;">💡 Click to see detailed stats</div>
+    `;
+    
+    tooltip.innerHTML = html;
+    tooltip.classList.remove('hidden');
+    
+    // Position tooltip near mouse
+    const x = mouseEvent.pageX + 10;
+    const y = mouseEvent.pageY + 10;
+    tooltip.style.left = x + 'px';
+    tooltip.style.top = y + 'px';
+}
+
+function hidePlanetTooltip() {
+    const tooltip = document.getElementById('planet-tooltip');
+    tooltip.classList.add('hidden');
+}
+
+function showPlanetDetailedStats(planetKey) {
+    const planet = planets[planetKey];
+    const modal = document.getElementById('planet-stats-modal');
+    const titleEl = document.getElementById('stats-planet-title');
+    const mainEl = document.getElementById('stats-main');
+    const upgradesEl = document.getElementById('stats-upgrades');
+    const achievementsEl = document.getElementById('stats-achievements');
+    
+    titleEl.textContent = `${planet.emoji} ${planet.name} - Advanced Statistics`;
+    
+    // Main stats section
+    const levelMult = 1 + (level || 1) * 0.02;
+    const production = napasPerSecond * planet.bonus * levelMult;
+    const parentNames = planet.parents.map(p => planets[p].name).join(', ') || 'Starting planet';
+    const childNames = planet.children.length > 0 ? planet.children.map(p => planets[p].name).join(', ') : 'Dead end';
+    
+    mainEl.innerHTML = `
+        <div class="stats-section">
+            <h4 style="color: ${planet.color};">📊 Core Statistics</h4>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-label">Name</div>
+                    <div class="stat-value">${planet.name}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Planet ID</div>
+                    <div class="stat-value">P${planet.id}/50</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Requirement</div>
+                    <div class="stat-value ${level >= planet.milestone ? 'unlocked' : 'locked'}">Level ${planet.milestone}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Bonus Multiplier</div>
+                    <div class="stat-value" style="color: ${planet.color}; font-weight: bold;">${(planet.bonus).toFixed(2)}x</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Production Here</div>
+                    <div class="stat-value">${production.toFixed(2)} napas/sec</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Status</div>
+                    <div class="stat-value">
+                        ${currentPlanet === planetKey ? '🌍 HOME PLANET' : (planet.unlocked ? '✅ Unlocked' : '🔒 Locked')}
+                    </div>
+                </div>
+            </div>
+            <div class="stat-description">${planet.desc}</div>
+            <div class="stat-hierarchy">
+                <strong style="color: ${planet.color};">🔗 Planet Hierarchy:</strong><br>
+                <span>← ${parentNames}</span><br>
+                <span>→ ${childNames}</span>
+            </div>
+        </div>
+    `;
+    
+    // Upgrades section
+    const upgrades = planetUpgrades[planetKey] || [];
+    let upgradesHTML = `<div class="stats-section"><h4 style="color: ${planet.color};">⚙️ Planet Upgrades (${upgrades.length})</h4>`;
+    if (upgrades.length === 0) {
+        upgradesHTML += `<p style="color: #888;">No upgrades available for this planet.</p>`;
+    } else {
+        upgrades.forEach(upgrade => {
+            const canAfford = napas >= upgrade.cost;
+            upgradesHTML += `
+                <div class="upgrade-item ${upgrade.purchased ? 'purchased' : ''} ${!canAfford && !upgrade.purchased ? 'expensive' : ''}">
+                    <div class="upgrade-header">
+                        <span class="upgrade-name">${upgrade.name}</span>
+                        <span class="upgrade-tier">Tier ${upgrade.tier}</span>
+                    </div>
+                    <div class="upgrade-desc">${upgrade.desc}</div>
+                    <div class="upgrade-stats">
+                        <span class="upgrade-cost" style="color: ${canAfford || upgrade.purchased ? planet.color : '#ff4444'};">
+                            ${upgrade.purchased ? '✅ OWNED' : upgrade.cost + ' napas'}
+                        </span>
+                        <span class="upgrade-bonus" style="color: ${planet.color};">+${((upgrade.effect - 1) * 100).toFixed(0)}% bonus</span>
+                    </div>
+                    ${!upgrade.purchased && level >= planet.milestone ? `
+                        <button class="upgrade-button ${canAfford ? 'buyable' : 'expensive'}" 
+                                onclick="purchasePlanetUpgrade('${planetKey}', '${upgrade.id}')"
+                                ${!canAfford ? 'disabled' : ''}>
+                            ${canAfford ? 'Purchase' : 'Too Expensive'}
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+        });
+    }
+    upgradesHTML += `</div>`;
+    upgradesEl.innerHTML = upgradesHTML;
+    
+    // Achievements section
+    const achievements = planetAchievements[planetKey] || [];
+    let achievementsHTML = `<div class="stats-section"><h4 style="color: ${planet.color};">🏆 Planet Achievements (${achievements.length})</h4>`;
+    if (achievements.length === 0) {
+        achievementsHTML += `<p style="color: #888;">No achievements available.</p>`;
+    } else {
+        achievements.forEach(ach => {
+            achievementsHTML += `
+                <div class="achievement-item ${ach.earned ? 'earned' : 'locked'}">
+                    <div class="achievement-content">
+                        <span class="achievement-name">${ach.name}</span>
+                        <span class="achievement-desc">${ach.desc}</span>
+                    </div>
+                    <span class="achievement-status">${ach.earned ? '🏆 EARNED' : '🔒 LOCKED'}</span>
+                </div>
+            `;
+        });
+    }
+    achievementsHTML += `</div>`;
+    achievementsEl.innerHTML = achievementsHTML;
+    
+    modal.classList.remove('hidden');
+}
+
+function hidePlanetDetailedStats() {
+    const modal = document.getElementById('planet-stats-modal');
+    modal.classList.add('hidden');
+}
+
+function purchasePlanetUpgrade(planetKey, upgradeId) {
+    const upgrades = planetUpgrades[planetKey];
+    const upgrade = upgrades.find(u => u.id === upgradeId);
+    
+    if (!upgrade) return;
+    if (upgrade.purchased) {
+        createNotification('You already own this upgrade!', 'error');
+        return;
+    }
+    if (napas < upgrade.cost) {
+        createNotification('Not enough Napas!', 'error');
+        return;
+    }
+    
+    napas -= upgrade.cost;
+    upgrade.purchased = true;
+    napasPerSecond *= upgrade.effect;
+    
+    createNotification(`🎉 Purchased ${upgrade.name}! +${((upgrade.effect - 1) * 100).toFixed(0)}% bonus!`, 'success');
+    playSuccessSound();
+    createFloatingElement('⭐', false, mainDiv.getBoundingClientRect().width / 2, 150);
+    
+    saveGameState();
+    updateDisplays();
+    showPlanetDetailedStats(planetKey);
+}
+
+function checkPlanetAchievements(planetKey) {
+    const achievements = planetAchievements[planetKey];
+    if (!achievements) return;
+    
+    achievements.forEach(ach => {
+        if (ach.earned) return; // Already earned
+        
+        let condition = false;
+        if (ach.condition === 'custom') {
+            // Handle custom conditions
+            condition = false; // Implement as needed
+        } else {
+            // Evaluate condition
+            condition = eval(ach.condition.replace(/currentPlanet/g, `'${currentPlanet}'`));
+        }
+        
+        if (condition) {
+            ach.earned = true;
+            createNotification(`🏆 Achievement Unlocked: ${ach.name}!`, 'achievement');
+            playSuccessSound();
+            saveGameState();
+        }
+    });
 }
 
 // ===== EASTER EGGS =====
@@ -1111,6 +1557,13 @@ initAchievements();
 initMiniGame();
 initTooltips();
 
+// Ensure planets are properly initialized
+Object.keys(planets).forEach(key => {
+    if (key === 'p1' || planetsUnlocked.includes(key)) {
+        planets[key].unlocked = true;
+    }
+});
+
 // Initialize Redeem Code System
 const redeemModal = document.getElementById('redeem-modal');
 const redeemButton = document.getElementById('redeemButton');
@@ -1155,14 +1608,41 @@ closePlanetBtn.addEventListener('click', () => {
     planetModal.classList.add('hidden');
 });
 
+// Close button for Stats Modal
+const closeStatsBtn = document.getElementById('closeStats');
+const statsModal = document.getElementById('planet-stats-modal');
+if (closeStatsBtn && statsModal) {
+    closeStatsBtn.addEventListener('click', () => {
+        hidePlanetDetailedStats();
+    });
+}
+
 // Initialize Konami Code Easter Egg
 checkKonamiCode();
+
+// Page Visibility API - detect when tab becomes hidden/visible
+document.addEventListener('visibilitychange', handlePageVisibilityChange);
+
+// Also handle when window is about to close
+window.addEventListener('beforeunload', () => {
+    saveGameState();
+});
 
 updateDisplays();
 if (musicEnabled) initBackgroundMusic();
 setInterval(mainLoop, 1000);
 
-// Save game state when leaving the page
-window.addEventListener('beforeunload', () => {
-    saveGameState();
-});
+// Register Service Worker for background production
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').then(registration => {
+        console.log('Service Worker registered successfully');
+        // Request periodic background sync every 30 seconds
+        if ('periodicSync' in registration) {
+            registration.periodicSync.register('sync-production', {
+                minInterval: 30 * 1000 // 30 seconds
+            }).catch(() => console.log('Periodic sync not available'));
+        }
+    }).catch(error => {
+        console.log('Service Worker registration failed:', error);
+    });
+}
