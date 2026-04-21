@@ -472,7 +472,6 @@ function levelUp() {
         totalLevels += 1;
         if (level > highestLevel) highestLevel = level;
         xpToNextLevel = calculateXpToNextLevel(level);
-        createNotification(`Level up! Napa power increased to level ${level}.`, 'success');
         playLevelUpSound();
         const mainRect = mainDiv.getBoundingClientRect();
         const centerX = mainRect.width / 2;
@@ -863,65 +862,24 @@ const planets = {
     p1: { id: 1, name: 'Earth', emoji: '🌍', desc: 'Your home planet. The Napa journey begins here.', bonus: 1, unlocked: true, milestone: 0, color: '#00ff00', parents: [], children: ['p2', 'p3'] },
     
     // Tier 2 - First Branches
-    p2: { id: 2, name: 'Venus', emoji: '🔥', desc: 'A scorching hot planet with intense Napa growth.', bonus: 1.15, unlocked: false, milestone: 10, color: '#ffaa00', parents: ['p1'], children: ['p4', 'p5'] },
-    p3: { id: 3, name: 'Mercury', emoji: '⚡', desc: 'Swift Mercury accelerates your production.', bonus: 1.12, unlocked: false, milestone: 12, color: '#ffff00', parents: ['p1'], children: ['p6', 'p7'] },
+    p2: { id: 2, name: 'Venus', emoji: '🔥', desc: 'A scorching hot planet with intense Napa growth.', bonus: 1.15, unlocked: false, milestone: 40, color: '#ffaa00', parents: ['p1'], children: ['p4', 'p5'] },
+    p3: { id: 3, name: 'Mercury', emoji: '⚡', desc: 'Swift Mercury accelerates your production.', bonus: 1.12, unlocked: false, milestone: 45, color: '#ffff00', parents: ['p1'], children: ['p6', 'p7'] },
     
     // Tier 3
-    p4: { id: 4, name: 'Mars', emoji: '🔴', desc: 'The red planet holds untapped Napa reserves.', bonus: 1.25, unlocked: false, milestone: 30, color: '#ff4444', parents: ['p2'], children: ['p8', 'p9'] },
-    p5: { id: 5, name: 'Jupiter', emoji: '🌀', desc: 'Massive gas giant with enormous Napa storms.', bonus: 1.22, unlocked: false, milestone: 35, color: '#cc7722', parents: ['p2'], children: ['p10', 'p11'] },
-    p6: { id: 6, name: 'Saturn', emoji: '💍', desc: 'Beautiful ringed planet with ring bonuses.', bonus: 1.20, unlocked: false, milestone: 32, color: '#ffeecc', parents: ['p3'], children: ['p12', 'p13'] },
-    p7: { id: 7, name: 'Uranus', emoji: '🧊', desc: 'Frozen planet with crystal Napa deposits.', bonus: 1.18, unlocked: false, milestone: 28, color: '#00ccff', parents: ['p3'], children: ['p14', 'p15'] },
+    p4: { id: 4, name: 'Mars', emoji: '🔴', desc: 'The red planet holds untapped Napa reserves.', bonus: 1.25, unlocked: false, milestone: 80, color: '#ff4444', parents: ['p2'], children: ['p8', 'p9'] },
+    p5: { id: 5, name: 'Jupiter', emoji: '🌀', desc: 'Massive gas giant with enormous Napa storms.', bonus: 1.22, unlocked: false, milestone: 90, color: '#cc7722', parents: ['p2'], children: ['p10', 'p11'] },
+    p6: { id: 6, name: 'Saturn', emoji: '💍', desc: 'Beautiful ringed planet with ring bonuses.', bonus: 1.20, unlocked: false, milestone: 85, color: '#ffeecc', parents: ['p3'], children: ['p12', 'p13'] },
+    p7: { id: 7, name: 'Uranus', emoji: '🧊', desc: 'Frozen planet with crystal Napa deposits.', bonus: 1.18, unlocked: false, milestone: 75, color: '#00ccff', parents: ['p3'], children: ['p14', 'p15'] },
     
     // Tier 4
-    p8: { id: 8, name: 'Neptune', emoji: '🌊', desc: 'Distant water world with icy Napa.', bonus: 1.35, unlocked: false, milestone: 55, color: '#0066ff', parents: ['p4'], children: ['p16', 'p17'] },
-    p9: { id: 9, name: 'Pluto', emoji: '❄️', desc: 'Dwarf planet at the edge of explored space.', bonus: 1.32, unlocked: false, milestone: 50, color: '#999999', parents: ['p4'], children: ['p18', 'p19'] },
-    p10: { id: 10, name: 'Io', emoji: '🌋', desc: 'Volcanic moon with fiery Napa flows.', bonus: 1.30, unlocked: false, milestone: 60, color: '#ff6600', parents: ['p5'], children: ['p20', 'p21'] },
-    p11: { id: 11, name: 'Europa', emoji: '🧊', desc: 'Icy moon with hidden Napa oceans.', bonus: 1.28, unlocked: false, milestone: 58, color: '#aaccff', parents: ['p5'], children: ['p22', 'p23'] },
-    p12: { id: 12, name: 'Titan', emoji: '🌫️', desc: 'Methane-rich moon with dense Napa atmosphere.', bonus: 1.26, unlocked: false, milestone: 56, color: '#ff9944', parents: ['p6'], children: ['p24', 'p25'] },
-    p13: { id: 13, name: 'Enceladus', emoji: '✨', desc: 'Shimmering ice moon with Napa geysers.', bonus: 1.24, unlocked: false, milestone: 54, color: '#ffffff', parents: ['p6'], children: ['p26', 'p27'] },
-    p14: { id: 14, name: 'Triton', emoji: '❄️', desc: 'Icy moon with frozen Napa methane.', bonus: 1.40, unlocked: false, milestone: 65, color: '#4488ff', parents: ['p7'], children: ['p28', 'p29'] },
-    p15: { id: 15, name: 'Oberon', emoji: '🌑', desc: 'Dark moon with mysterious Napa forces.', bonus: 1.38, unlocked: false, milestone: 63, color: '#333333', parents: ['p7'], children: ['p30', 'p31'] },
-    
-    // Tier 5
-    p16: { id: 16, name: 'The Sun', emoji: '☀️', desc: 'Pure stellar Napa energy at the core.', bonus: 1.50, unlocked: false, milestone: 80, color: '#ffff00', parents: ['p8'], children: ['p32', 'p33'] },
-    p17: { id: 17, name: 'Proxima', emoji: '📍', desc: 'Nearest star with exotic Napa particles.', bonus: 1.48, unlocked: false, milestone: 78, color: '#ffaa44', parents: ['p8'], children: ['p34', 'p35'] },
-    p18: { id: 18, name: 'Kepler-22b', emoji: '🟢', desc: 'Earth-like planet with bountiful Napa.', bonus: 1.45, unlocked: false, milestone: 75, color: '#00ff00', parents: ['p9'], children: ['p36', 'p37'] },
-    p19: { id: 19, name: 'TRAPPIST-1d', emoji: '🟣', desc: 'Exoplanet in a rare Napa-rich system.', bonus: 1.42, unlocked: false, milestone: 72, color: '#ff00ff', parents: ['p9'], children: ['p38', 'p39'] },
-    p20: { id: 20, name: 'Proxima Centauri', emoji: '✴️', desc: 'Stellar Napa forge of the nearest system.', bonus: 1.52, unlocked: false, milestone: 85, color: '#ff6600', parents: ['p10'], children: ['p40', 'p41'] },
-    p21: { id: 21, name: 'Sirius', emoji: '⭐', desc: 'Brightest star with concentrated Napa.', bonus: 1.55, unlocked: false, milestone: 88, color: '#ffffff', parents: ['p10'], children: ['p42', 'p43'] },
-    p22: { id: 22, name: 'Betelgeuse', emoji: '🌟', desc: 'Red supergiant with massive Napa reserves.', bonus: 1.58, unlocked: false, milestone: 90, color: '#ff4444', parents: ['p11'], children: ['p44', 'p45'] },
-    p23: { id: 23, name: 'Vega', emoji: '💫', desc: 'Blue star with crystalline Napa.', bonus: 1.56, unlocked: false, milestone: 89, color: '#44aaff', parents: ['p11'], children: ['p46', 'p47'] },
-    p24: { id: 24, name: 'Rigel', emoji: '🌠', desc: 'Blazing star with intense Napa core.', bonus: 1.60, unlocked: false, milestone: 92, color: '#0099ff', parents: ['p12'], children: ['p48', 'p49'] },
-    p25: { id: 25, name: 'Antares', emoji: '🔥', desc: 'Red hypergiant with supreme Napa power.', bonus: 1.65, unlocked: false, milestone: 95, color: '#ff3333', parents: ['p12'], children: ['p50'] },
-    
-    // Path to NAPA PLANET - Special Tiers
-    p26: { id: 26, name: 'The Void', emoji: '⚫', desc: 'Empty space between stars, strange Napa zones.', bonus: 1.70, unlocked: false, milestone: 100, color: '#000000', parents: ['p13'], children: [] },
-    p27: { id: 27, name: 'Stargate Alpha', emoji: '🟦', desc: 'Ancient portal to distant Napa realms.', bonus: 1.72, unlocked: false, milestone: 102, color: '#0033ff', parents: ['p13'], children: [] },
-    p28: { id: 28, name: 'Napa Nebula', emoji: '🌌', desc: 'Cosmic cloud of condensed Napa essence.', bonus: 1.75, unlocked: false, milestone: 105, color: '#6600ff', parents: ['p14'], children: [] },
-    p29: { id: 29, name: 'Crystal Realm', emoji: '💎', desc: 'Dimension of pure crystallized Napa.', bonus: 1.78, unlocked: false, milestone: 108, color: '#00ffff', parents: ['p14'], children: [] },
-    p30: { id: 30, name: 'Dimensional Gate', emoji: '🌀', desc: 'Threshold to alternate Napa dimensions.', bonus: 1.80, unlocked: false, milestone: 110, color: '#ff00ff', parents: ['p15'], children: [] },
-    p31: { id: 31, name: 'Quantum Realm', emoji: '⚛️', desc: 'Subatomic Napa energy field.', bonus: 1.82, unlocked: false, milestone: 112, color: '#ff66ff', parents: ['p15'], children: [] },
-    p32: { id: 32, name: 'Celestial Library', emoji: '📚', desc: 'Repository of cosmic Napa knowledge.', bonus: 1.85, unlocked: false, milestone: 115, color: '#ffcc99', parents: ['p16'], children: [] },
-    p33: { id: 33, name: 'Eternal Void', emoji: '🌌', desc: 'Infinity itself, boundless Napa potential.', bonus: 1.88, unlocked: false, milestone: 118, color: '#1a1a1a', parents: ['p16'], children: [] },
-    p34: { id: 34, name: 'Napa Lighthouse', emoji: '🔦', desc: 'Beacon of pure Napa illumination.', bonus: 1.90, unlocked: false, milestone: 120, color: '#ffff66', parents: ['p17'], children: [] },
-    p35: { id: 35, name: 'Heaven\'s Gate', emoji: '⛩️', desc: 'The divine entrance to Napa ascension.', bonus: 1.92, unlocked: false, milestone: 122, color: '#ffaaff', parents: ['p17'], children: [] },
-    p36: { id: 36, name: 'Paradise Isle', emoji: '🏝️', desc: 'Tropical paradise island of Napa fruits.', bonus: 1.95, unlocked: false, milestone: 125, color: '#44ff44', parents: ['p18'], children: [] },
-    p37: { id: 37, name: 'Mount Olympus', emoji: '⛰️', desc: 'Home of the Napa gods themselves.', bonus: 2.00, unlocked: false, milestone: 130, color: '#cccccc', parents: ['p18'], children: [] },
-    p38: { id: 38, name: 'The Abyss', emoji: '🕳️', desc: 'Deepest depths of Napa mystery.', bonus: 2.05, unlocked: false, milestone: 135, color: '#330033', parents: ['p19'], children: [] },
-    p39: { id: 39, name: 'Napa Horizon', emoji: '🌅', desc: 'Event horizon of pure Napa concentration.', bonus: 2.10, unlocked: false, milestone: 140, color: '#ff9900', parents: ['p19'], children: [] },
-    p40: { id: 40, name: 'Ethereal Sanctuary', emoji: '✨', desc: 'Sacred Napa sanctuary beyond reality.', bonus: 2.15, unlocked: false, milestone: 145, color: '#ffff99', parents: ['p20'], children: [] },
-    p41: { id: 41, name: 'Cosmic Forge', emoji: '⚙️', desc: 'Where Napa itself is forged anew.', bonus: 2.20, unlocked: false, milestone: 150, color: '#ff9966', parents: ['p20'], children: [] },
-    p42: { id: 42, name: 'Genesis Core', emoji: '🌀', desc: 'Source of all Napa creation.', bonus: 2.25, unlocked: false, milestone: 155, color: '#0099cc', parents: ['p21'], children: [] },
-    p43: { id: 43, name: 'Infinity Tower', emoji: '🗼', desc: 'Infinite tower of accumulated Napa.', bonus: 2.30, unlocked: false, milestone: 160, color: '#ff66cc', parents: ['p21'], children: [] },
-    p44: { id: 44, name: 'Napa Singularity', emoji: '🔯', desc: 'Point of ultimate Napa concentration.', bonus: 2.35, unlocked: false, milestone: 165, color: '#aa00ff', parents: ['p22'], children: [] },
-    p45: { id: 45, name: 'Mythical Realm', emoji: '🐉', desc: 'Realm of legendary Napa creatures.', bonus: 2.40, unlocked: false, milestone: 170, color: '#ff4488', parents: ['p22'], children: [] },
-    p46: { id: 46, name: 'Paradise Peak', emoji: '👑', desc: 'The highest peak of Napa perfection.', bonus: 2.45, unlocked: false, milestone: 175, color: '#ffff00', parents: ['p23'], children: [] },
-    p47: { id: 47, name: 'Sacred Garden', emoji: '🌺', desc: 'Immortal garden where Napas grow.', bonus: 2.50, unlocked: false, milestone: 180, color: '#ff44ff', parents: ['p23'], children: [] },
-    p48: { id: 48, name: 'Napa Academy', emoji: '🎓', desc: 'University of ultimate Napa mastery.', bonus: 2.55, unlocked: false, milestone: 185, color: '#4488ff', parents: ['p24'], children: [] },
-    p49: { id: 49, name: 'Divine Throne', emoji: '👸', desc: 'Seat of the Napa Empress.', bonus: 2.60, unlocked: false, milestone: 190, color: '#ffaa00', parents: ['p24'], children: ['p50'] },
-    
-    // ULTIMATE GOAL - Planet 50
-    p50: { id: 50, name: 'NAPA PLANET', emoji: '🍜', desc: 'The ultimate destination - the legendary NAPA PLANET itself! You have reached the end... or the beginning of a new adventure!', bonus: 3.0, unlocked: false, milestone: 200, color: '#00ff00', parents: ['p25', 'p49'], children: [], isGoal: true }
+    p8: { id: 8, name: 'Neptune', emoji: '🌊', desc: 'Distant water world with icy Napa.', bonus: 1.35, unlocked: false, milestone: 140, color: '#0066ff', parents: ['p4'], children: ['p16', 'p17'] },
+    p9: { id: 9, name: 'Pluto', emoji: '❄️', desc: 'Dwarf planet at the edge of explored space.', bonus: 1.32, unlocked: false, milestone: 130, color: '#999999', parents: ['p4'], children: ['p18', 'p19'] },
+    p10: { id: 10, name: 'Io', emoji: '🌋', desc: 'Volcanic moon with fiery Napa flows.', bonus: 1.30, unlocked: false, milestone: 150, color: '#ff6600', parents: ['p5'], children: ['p20', 'p21'] },
+    p11: { id: 11, name: 'Europa', emoji: '🧊', desc: 'Icy moon with hidden Napa oceans.', bonus: 1.28, unlocked: false, milestone: 145, color: '#aaccff', parents: ['p5'], children: ['p22', 'p23'] },
+    p12: { id: 12, name: 'Titan', emoji: '🌫️', desc: 'Methane-rich moon with dense Napa atmosphere.', bonus: 1.26, unlocked: false, milestone: 140, color: '#ff9944', parents: ['p6'], children: ['p24', 'p25'] },
+    p13: { id: 13, name: 'Enceladus', emoji: '✨', desc: 'Shimmering ice moon with Napa geysers.', bonus: 1.24, unlocked: false, milestone: 135, color: '#ffffff', parents: ['p6'], children: [] },
+    p14: { id: 14, name: 'Triton', emoji: '❄️', desc: 'Icy moon with frozen Napa methane.', bonus: 1.40, unlocked: false, milestone: 155, color: '#4488ff', parents: ['p7'], children: [] },
+    p15: { id: 15, name: 'Oberon', emoji: '🌑', desc: 'Dark moon with mysterious Napa forces.', bonus: 1.38, unlocked: false, milestone: 160, color: '#333333', parents: ['p7'], children: [], isGoal: true }
 };
 
 // ===== PLANET-SPECIFIC UPGRADES =====
